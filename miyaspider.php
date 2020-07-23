@@ -145,9 +145,7 @@ function header_reflect_check ( $content ){
 function form_contain_check( $content ){
 
     if(preg_match_all('@<form(.*?)</form>@si',$content,$forms)){
-        if(!empty($forms[0])){
-            return array_map('htmlentities',$forms[0]);
-        }
+        return $forms[0];
     }else{
         return false;
     }
