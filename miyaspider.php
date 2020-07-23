@@ -170,8 +170,9 @@ function external_search( $links ){
 
 function internal_search( $links , $target_http ,$target ){
    
-    $new_internal = [];
-    $new_external = [];
+    $new_internal    = [];
+    $new_external    = [];
+    $scanned_links   = [];
 
     foreach($links[0] as $internal_link){
 
@@ -210,7 +211,7 @@ function internal_search( $links , $target_http ,$target ){
             if(!empty($link_search[0])){
                 $count_internal = 0;
                 foreach($link_search[0] as $out){
-                    if(!in_array($out,$links[0]) && !in_array($out,$new_internal)){
+                    if(!in_array($out,$links[0]) && !in_array($out,$new_internal) && !in_array($out,$scanned_links)){
                         $new_internal[] = $out;
                         ++$count_internal;
                         // print "\tUnique internal url found => ".$out.PHP_EOL;
@@ -222,7 +223,7 @@ function internal_search( $links , $target_http ,$target ){
             }elseif(!empty($link_search[1])){
                 $count_external = 0;
                 foreach($link_search[1] as $out){
-                    if(!in_array($out,$links[1]) && !in_array($out,$new_external)){
+                    if(!in_array($out,$links[1]) && !in_array($out,$new_external) && !in_array($out,$scanned_links)){
                         $new_external[] = $out;
                         ++$count_external;
                         // print "\tUnique external url found => ".$out.PHP_EOL;
@@ -246,6 +247,7 @@ function internal_search( $links , $target_http ,$target ){
     while(count($new_internal) > 0){
         $random_key  = array_rand($new_internal);
         $link_choose = $new_internal[$random_key];
+        $scanned_links[] = $link_choose;
         
         print "\t=> ".$link_choose.' spider on it'.PHP_EOL;
 
@@ -285,7 +287,7 @@ function internal_search( $links , $target_http ,$target ){
             if(!empty($links_deep[0])){
                 $count_internal = 0;
                 foreach($links_deep[0] as $out_internal){
-                    if(!in_array($out_internal,$new_internal) && !in_array($out_internal,$links[0])){
+                    if(!in_array($out_internal,$new_internal) && !in_array($out_internal,$links[0]) && !in_array($out_internal,$scanned_links)){
                         $new_internal[] = $out_internal;
                         ++$count_internal;
                         // print "\tUnique internal url found => ".$out_internal.PHP_EOL;
@@ -297,7 +299,7 @@ function internal_search( $links , $target_http ,$target ){
             }elseif(!empty($links_deep[1])){
                 $count_external = 0;
                 foreach($links_deep[1] as $out_external){
-                    if(!in_array($out_external,$new_external) && !in_array($out_external,$links[1])){
+                    if(!in_array($out_external,$new_external) && !in_array($out_external,$links[1]) && !in_array($out_external,$scanned_links)){
                         $new_external[] = $out_external;
                         ++$count_external;
                         // print "\tUnique external url found => ".$out_external.PHP_EOL;
