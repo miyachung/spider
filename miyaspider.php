@@ -47,8 +47,10 @@ print $prefix.$internal_count.' different internal urls found in page content'.P
 print $prefix.$external_count.' different external urls found in page content'.PHP_EOL;
 usleep(1000);
 file_put_contents("internal.html","<h1 style='margin:0;padding:0;'>miyachung spider results for <a href='$target_http' target='_blank'>$target</a> & Internal Urls</h1><hr /><br />");
+if($internal_count > 0){
 print $prefix.'Preparing a deep search in to links..'.PHP_EOL;
 sleep(2);
+}
 
 // ----- External urls search
 if($external_count > 0){
@@ -61,9 +63,11 @@ if($external_count > 0){
     external_search($links);
     write_to_file('external.html','</ul>');
     write_to_file('external.html','<h1 style="margin:0;padding:0;">External url scan has completed in '.(time()-$time1).' seconds</h1>');
+    print PHP_EOL;
     print $prefix.'External url scan has completed!'.PHP_EOL;
 }
 
+print PHP_EOL;
 
 // ----- Internal urls search
 if($internal_count > 0){
@@ -75,10 +79,11 @@ if($internal_count > 0){
     internal_search($links,$target_http, $target);
     write_to_file('internal.html','</ul>');
     write_to_file('internal.html','<h1 style="margin:0;padding:0;">Internal url scan has completed in '.(time()-$time1).' seconds</h1>');
+    print PHP_EOL;
     print $prefix.'Internal url scan has completed!'.PHP_EOL;
 }
 
-
+print PHP_EOL;
 print $prefix.'Spider has completed all of the jobs'.PHP_EOL;
 print $prefix.'Miyachung greets you :)';
 
@@ -220,99 +225,81 @@ function internal_search( $links , $target_http ,$target ){
                 if($count_internal > 0){
                     print "\tDifferent internal urls in page : $count_internal , Current list: ".count($new_internal).PHP_EOL;
                 }
-            }elseif(!empty($link_search[1])){
-                $count_external = 0;
-                foreach($link_search[1] as $out){
-                    if(!in_array($out,$links[1]) && !in_array($out,$new_external) && !in_array($out,$scanned_links)){
-                        $new_external[] = $out;
-                        ++$count_external;
-                        // print "\tUnique external url found => ".$out.PHP_EOL;
-                    }
-                }
-                if($count_external > 0){
-                    print "\tDifferent external urls in page : $count_external , Current list: ".count($new_external).PHP_EOL;
-                }
             }
         }else{
-            print "\tThere are no internal & external urls in this page".PHP_EOL;
+            print "\tThere are no internal urls in this page".PHP_EOL;
         }
         write_to_file('internal.html','</li>');
     }
-
-    print "\t[+] Spider has collected ".count($new_internal)." new different internal urls".PHP_EOL;
-    print "\t[+] Spider has collected ".count($new_external)." new different external urls".PHP_EOL;
-    print "\tPreparing a deep search in to links..".PHP_EOL;
-    sleep(2);
-    write_to_file('internal.html','<hr /><h1 style="margin:0;padding:0;">Section 2</h1>');
-    while(count($new_internal) > 0){
-        $random_key  = array_rand($new_internal);
-        $link_choose = $new_internal[$random_key];
-        $scanned_links[] = $link_choose;
+    print "\t------------------------- Section 2".PHP_EOL;
+    $internalcount = count($new_internal);
+    if($internalcount > 0){
+        print "\t[INFO] Spider has collected ".$internalcount." new different internal urls".PHP_EOL;
+        print "\tPreparing a deep search in to links..".PHP_EOL;
+        write_to_file('internal.html','<hr /><h1 style="margin:0;padding:0;">Section 2</h1>');
+        sleep(2);
         
-        print "\t=> ".$link_choose.' spider on it'.PHP_EOL;
-
-        $search_deep = spider( $target_http.$link_choose );
-
-
-        if(preg_match('@\=[0-9]@',$target_http.$link_choose)){
-            write_to_file('internal.html',"<li><a href='$target_http.$link_choose' target='_blank'>$target_http.$link_choose</a> <font color='red'>[Possible for SQL Attacks]</font>");
-        }else{
-            write_to_file('internal.html','<li><a href="'.$target_http.$link_choose.'" target="_blank">'.$target_http.$link_choose.'</a>');
-        }
-
-        
-        write_to_file('internal.html','<ul><li><pre>'.$search_deep[1].'</pre></li></ul>');
-
-        $check_header = header_reflect_check($search_deep[0]);
-
-        if($check_header != false){
-            write_to_file('internal.html',"<ul><li><font color='red'>This page has header reflected in content!!</font>");
-            foreach($check_header as $result_header){
-                write_to_file('internal.html',"<pre><ul><li>$result_header</li></ul></pre>");
+        while(count($new_internal) > 0){
+            $random_key  = array_rand($new_internal);
+            $link_choose = $new_internal[$random_key];
+            $scanned_links[] = $link_choose;
+            
+            print "\t=> ".$link_choose.' spider on it'.PHP_EOL;
+    
+            $search_deep = spider( $target_http.$link_choose );
+    
+    
+            if(preg_match('@\=[0-9]@',$target_http.$link_choose)){
+                write_to_file('internal.html',"<li><a href='$target_http.$link_choose' target='_blank'>$target_http.$link_choose</a> <font color='red'>[Possible for SQL Attacks]</font>");
+            }else{
+                write_to_file('internal.html','<li><a href="'.$target_http.$link_choose.'" target="_blank">'.$target_http.$link_choose.'</a>');
             }
-            write_to_file('internal.html',"</li></ul>");
-        }
-
-        $check_form = form_contain_check($search_deep[0]);
-        if($check_form != false) write_to_file('internal.html','<ul><li><h4 style="margin:0;padding:0;">This page contains form</h4><br/><textarea style="width:50%;height:300px;overflow:auto">'.implode("\r\n",$check_form).'</textarea></li></ul>');
-        if(preg_match('@<title>(.*?)</title>@',$search_deep[0],$deep_title)){
-            print "\tTitle taken: ".trim(strip_tags($deep_title[1])).PHP_EOL;
-            write_to_file('internal.html','<ul><h4 style="margin:0;padding:0;">Title</h4><li>'.$deep_title[1].'</li></ul>');
-        }
-        write_to_file('internal.html','</li>');
-        unset($new_internal[$random_key]);
-
-        $links_deep = seperate_links( $search_deep[0] , $target );
-        if($links_deep != false){
-            if(!empty($links_deep[0])){
-                $count_internal = 0;
-                foreach($links_deep[0] as $out_internal){
-                    if(!in_array($out_internal,$new_internal) && !in_array($out_internal,$links[0]) && !in_array($out_internal,$scanned_links)){
-                        $new_internal[] = $out_internal;
-                        ++$count_internal;
-                        // print "\tUnique internal url found => ".$out_internal.PHP_EOL;
+    
+            
+            write_to_file('internal.html','<ul><li><pre>'.$search_deep[1].'</pre></li></ul>');
+    
+            $check_header = header_reflect_check($search_deep[0]);
+    
+            if($check_header != false){
+                write_to_file('internal.html',"<ul><li><font color='red'>This page has header reflected in content!!</font>");
+                foreach($check_header as $result_header){
+                    write_to_file('internal.html',"<pre><ul><li>$result_header</li></ul></pre>");
+                }
+                write_to_file('internal.html',"</li></ul>");
+            }
+    
+            $check_form = form_contain_check($search_deep[0]);
+            if($check_form != false) write_to_file('internal.html','<ul><li><h4 style="margin:0;padding:0;">This page contains form</h4><br/><textarea style="width:50%;height:300px;overflow:auto">'.implode("\r\n",$check_form).'</textarea></li></ul>');
+            if(preg_match('@<title>(.*?)</title>@',$search_deep[0],$deep_title)){
+                print "\tTitle taken: ".trim(strip_tags($deep_title[1])).PHP_EOL;
+                write_to_file('internal.html','<ul><h4 style="margin:0;padding:0;">Title</h4><li>'.$deep_title[1].'</li></ul>');
+            }
+            write_to_file('internal.html','</li>');
+            unset($new_internal[$random_key]);
+    
+            $links_deep = seperate_links( $search_deep[0] , $target );
+            if($links_deep != false){
+                if(!empty($links_deep[0])){
+                    $count_internal = 0;
+                    foreach($links_deep[0] as $out_internal){
+                        if(!in_array($out_internal,$new_internal) && !in_array($out_internal,$links[0]) && !in_array($out_internal,$scanned_links)){
+                            $new_internal[] = $out_internal;
+                            ++$count_internal;
+                            // print "\tUnique internal url found => ".$out_internal.PHP_EOL;
+                        }
+                    }
+                    if($count_internal > 0){
+                        print "\tDifferent internal urls in page : $count_internal , Current list: ".count($new_internal).PHP_EOL;
                     }
                 }
-                if($count_internal > 0){
-                    print "\tDifferent internal urls in page : $count_internal , Current list: ".count($new_internal).PHP_EOL;
-                }
-            }elseif(!empty($links_deep[1])){
-                $count_external = 0;
-                foreach($links_deep[1] as $out_external){
-                    if(!in_array($out_external,$new_external) && !in_array($out_external,$links[1]) && !in_array($out_external,$scanned_links)){
-                        $new_external[] = $out_external;
-                        ++$count_external;
-                        // print "\tUnique external url found => ".$out_external.PHP_EOL;
-                    }
-                }
-                if($count_external > 0){
-                    print "\tDifferent external urls in page : $count_external , Current list: ".count($new_external).PHP_EOL;
-                }
+    
+            }else{
+                print "\tThere are no internal urls in this page".PHP_EOL;
             }
-
-        }else{
-            print "\tThere are no internal & external urls in this page".PHP_EOL;
         }
+
+    }else{
+        print "\tSpider has got nothing from section 2 :(".PHP_EOL;
     }
 
 }
