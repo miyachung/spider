@@ -144,8 +144,8 @@ function header_reflect_check ( $content ){
 
 function form_contain_check( $content ){
 
-    if(preg_match('@<form(.*?)</form>@si',$content,$forms)){
-        return $forms[0];
+    if(preg_match_all('@<form(.*?)</form>@si',$content,$forms)){
+        return array_map('addslashes',$forms[0]);
     }else{
         return false;
     }
@@ -205,7 +205,7 @@ function internal_search( $links , $target_http ,$target ){
         
         $check_form   = form_contain_check($spider_internal[0]);
         if($check_form != false){
-            $check_form_string = addslashes($check_form);
+            $check_form_string = implode("\r\n",$check_form);
             write_to_file('internal.html','<ul><li><h4 style="margin:0;padding:0;">This page contains form</h4><br/><textarea style="width:50%;height:300px;overflow:auto">'.$check_form_string.'</textarea></li></ul>');
         } 
         if(preg_match('@<title>(.*?)</title>@i',$spider_internal[0],$title)){
@@ -273,7 +273,7 @@ function internal_search( $links , $target_http ,$target ){
     
             $check_form = form_contain_check($search_deep[0]);
             if($check_form != false){
-                $check_form_string = addslashes($check_form);
+                $check_form_string = implode("\r\n",$check_form);
                 write_to_file('internal.html','<ul><li><h4 style="margin:0;padding:0;">This page contains form</h4><br/><textarea style="width:50%;height:300px;overflow:auto">'.$check_form_string.'</textarea></li></ul>');
             } 
             if(preg_match('@<title>(.*?)</title>@',$search_deep[0],$deep_title)){
