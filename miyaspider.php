@@ -399,8 +399,6 @@ function post_penetration_control($content){
         $results[] = 'This post-data has affected to page content by malicious Remote File Inclusion attack';
     }elseif(strstr($content,'<h1>spiderPenetrationHTML</h1>')){
         $results[] = 'This post-data has affected to page content by malicious HTML Injection attack'; 
-    }elseif(strstr($content,'<h1>spiderPenetrationHTML</h1>')){
-        $results[] = 'This post-data has affected to page content by malicious HTML Injection attack'; 
     }elseif(strstr($content,'Loaded Configuration File') && strstr($content,'Zend Extension Build')){
         $results[] = 'This post-data has affected to page content by malicious PHP Code Injection attack'; 
     }
