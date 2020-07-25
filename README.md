@@ -1,6 +1,5 @@
 # spider
-A spider which is scan remote host's internal,external links
-
+A spider which can scan remote host's internal,external links
 
       - Miyachung Spider Bot v1.0 ( developable release )
       - codes & logic by miyachung
