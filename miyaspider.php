@@ -184,6 +184,7 @@ function internal_search( $links , $target_http ,$target ){
     $new_external    = [];
     $scanned_links   = [];
     $posted_forms    = [];
+    $sql_scanned     = [];
     foreach($links[0] as $internal_link){
 
         $total_link      = $target_http.$internal_link;
@@ -191,7 +192,21 @@ function internal_search( $links , $target_http ,$target ){
 
         $spider_internal = spider($total_link);
         if(preg_match('@\=[0-9]@',$total_link)){
-            write_to_file('internal.html',"<li><a href='$total_link' target='_blank'>$total_link</a> <font color='red'>[Possible for SQL Attacks]</font>");
+            $explode_link     = explode("=",$total_link);
+            if(!in_array($explode_link[0],$sql_scanned)){
+                $sql_scanned[]    = $explode_link[0];
+                $change_link      = preg_replace('@=([0-9+])@',"=$1%27",$total_link);
+                $spider_sql_test  = spider($change_link); 
+                $sql_check_page   = sql_check($spider_sql_test[0]);
+                if($sql_check_page){
+                    write_to_file('internal.html',"<li><a href='$change_link' target='_blank'>".urldecode($change_link)."</a> <font color='red'>[SQL Injection Vulnerable]</font>");
+                }else{
+                    write_to_file('internal.html',"<li><a href='$total_link' target='_blank'>$total_link</a> <font color='red'></font>");
+                }
+            }else{
+                write_to_file('internal.html',"<li><a href='$total_link' target='_blank'>$total_link</a>");
+            }
+            
         }else{
             write_to_file('internal.html',"<li><a href='$total_link' target='_blank'>$total_link</a>");
         }
@@ -265,7 +280,20 @@ function internal_search( $links , $target_http ,$target ){
     
     
             if(preg_match('@\=[0-9]@',$target_http.$link_choose)){
-                write_to_file('internal.html',"<li><a href='$target_http.$link_choose' target='_blank'>$target_http.$link_choose</a> <font color='red'>[Possible for SQL Attacks]</font>");
+                $explode_link     = explode("=",$target_http.$link_choose);
+                if(!in_array($explode_link[0],$sql_scanned)){
+                    $sql_scanned[]    = $explode_link[0];
+                    $change_link      = preg_replace('@=([0-9+])@',"=$1%27",$target_http.$link_choose);
+                    $spider_sql_test  = spider($change_link); 
+                    $sql_check_page   = sql_check($spider_sql_test[0]);
+                    if($sql_check_page){
+                        write_to_file('internal.html',"<li><a href='$target_http.$link_choose' target='_blank'>".urldecode($target_http.$link_choose)."</a> <font color='red'>[SQL Injection Vulnerable]</font>");
+                    }else{
+                        write_to_file('internal.html',"<li><a href='$target_http.$link_choose' target='_blank'>$target_http.$link_choose</a> <font color='red'></font>");
+                    }
+                }else{
+                    write_to_file('internal.html',"<li><a href='$target_http.$link_choose' target='_blank'>$target_http.$link_choose</a>");
+                }
             }else{
                 write_to_file('internal.html','<li><a href="'.$target_http.$link_choose.'" target="_blank">'.$target_http.$link_choose.'</a>');
             }
@@ -333,6 +361,7 @@ function form_post_process( $form_content , $total_link , $target_http ){
     
         $form_content = stripslashes($form_content);
         preg_match_all('@name="(.*?)"@si',$form_content,$names);
+        if(empty($names[1])) return false;
         preg_match('@action="(.*?)"@si',$form_content,$action);
         if(empty($action[1])){
             $toAct    = $total_link;
@@ -409,6 +438,16 @@ function post_penetration_control($content){
         return false;
     }
 
+}
+function sql_check($data)
+{
+	$sql_error_list = ['mysql_affected_rows','MariaDB','You have an error in your SQL syntax','mysql_num_rows','mysql_fetch_assoc','mysql_fetch_array'];
+	if(@stristr($data,$sql_error_list[0]) || @stristr($data,$sql_error_list[1]) || @stristr($data,$sql_error_list[2]) || @stristr($data,$sql_error_list[3]) || @stristr($data,$sql_error_list[4]) || @stristr($data,$sql_error_list[5]) || @stristr($data, $sql_error_list[6]))
+	{
+		return true;
+	}else{
+		return false;
+	}
 }
 function prepare_field($field){
 
