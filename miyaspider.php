@@ -398,7 +398,7 @@ function form_post_process( $form_content , $total_link , $target_http ){
                     $control    = post_penetration_control($post_page[0]);
                     if($control != false){
                         foreach($control as $result){
-                            write_to_file('internal.html','<ul><li><font color="red">'.$result.'</font></li><li><input type="text" style="width:100%" value="'.$pfield.'"></li></ul>');
+                            write_to_file('internal.html','<ul><li><font color="red">'.$result.'</font></li><li><input type="text" style="width:100%" value="'.htmlspecialchars(urldecode($pfield)).'"></li></ul>');
                         }
                     }
                 }else{
