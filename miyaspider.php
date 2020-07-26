@@ -8,7 +8,7 @@
       \/    \/          \/     \/     \/           \//_____/        \/ |__|           \/    \/       
 
       - Miyachung Spider Bot v1.0 ( developable release )
-      - codes & logic by miyachung
+      - codes by miyachung
 
        This is a spider bot which is performs deep url search on remote host,
        Abilities ;
