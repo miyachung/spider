@@ -64,7 +64,7 @@ if($external_count > 0){
     $time1 = time();
     external_search($links);
     write_to_file('external.html','</ul>');
-    write_to_file('external.html','<h1 style="margin:0;padding:0;">External url scan has completed in '.(time()-$time1).' seconds</h1>');
+    write_to_file('external.html','<h1 style="margin:0;padding:0;">External url scan has completed in '.(secondstotime(time()-$time1)).'</h1>');
     print PHP_EOL;
     print $prefix.'External url scan has completed!'.PHP_EOL;
 }
@@ -80,7 +80,7 @@ if($internal_count > 0){
     $time1 = time();
     internal_search($links,$target_http, $target);
     write_to_file('internal.html','</ul>');
-    write_to_file('internal.html','<h1 style="margin:0;padding:0;">Internal url scan has completed in '.(time()-$time1).' seconds</h1>');
+    write_to_file('internal.html','<h1 style="margin:0;padding:0;">Internal url scan has completed in '.(secondstotime(time()-$time1)).'</h1>');
     print PHP_EOL;
     print $prefix.'Internal url scan has completed!'.PHP_EOL;
 }
@@ -513,7 +513,27 @@ function seperate_links( $content , $control ){
     }
 
 }
+function secondstotime($seconds){
 
+    $sec   = $seconds;
+
+    $hours = floor($sec / 3600);
+    $minutes = floor(($sec / 60) % 60);
+    $seconds = $sec % 60;
+
+    $output  = '';
+
+    if($hours > 0 ){
+        $output .= $hours.' hours ';
+    }
+    if($minutes > 0){
+        $output .= $minutes.' minutes ';
+    }
+    if($seconds > 0){
+        $output .= $seconds.' seconds';
+    }
+    return $output;
+}
 function write_to_file ($file, $text){
     $fopen = fopen($file,'ab');
     if(flock($fopen,LOCK_EX)){
